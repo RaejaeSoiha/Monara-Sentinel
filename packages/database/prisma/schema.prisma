@@ -1,0 +1,569 @@
+// This is your Prisma schema file for Monara Sentinel
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// Authentication & Organization
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password_hash String
+  name          String?
+  avatar_url    String?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  memberships   Membership[]
+  created_cases Case[]    @relation("CaseCreator")
+  assigned_cases Case[]   @relation("CaseAssignee")
+  created_investigations Investigation[] @relation("InvestigationCreator")
+  assigned_investigations Investigation[] @relation("InvestigationAssignee")
+  created_entities Entity[] @relation("EntityCreator")
+  created_relationships Relationship[] @relation("RelationshipCreator")
+  collected_evidence Evidence[] @relation("EvidenceCollector")
+  timeline_events TimelineEvent[] @relation("TimelineCreator")
+  audit_logs    AuditLog[]
+  sessions      Session[]
+  intelligence_jobs IntelligenceJob[] @relation("IntelligenceJobCreator")
+  risk_indicators RiskIndicator[] @relation("RiskIndicatorCreator")
+
+  @@index([email])
+  @@index([deleted_at])
+  @@map("users")
+}
+
+model Organization {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logo_url    String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  deleted_at  DateTime?
+
+  memberships Membership[]
+  cases       Case[]
+  audit_logs  AuditLog[]
+  intelligence_jobs IntelligenceJob[]
+  risk_indicators RiskIndicator[]
+
+  @@index([slug])
+  @@index([deleted_at])
+  @@map("organizations")
+}
+
+model Membership {
+  id             String      @id @default(cuid())
+  user_id        String
+  organization_id String
+  role_id        String
+  created_at     DateTime    @default(now())
+  updated_at     DateTime    @updatedAt
+
+  user           User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  role           Role        @relation(fields: [role_id], references: [id])
+
+  @@unique([user_id, organization_id])
+  @@index([user_id])
+  @@index([organization_id])
+  @@index([role_id])
+  @@map("memberships")
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  memberships Membership[]
+  permissions RolePermission[]
+
+  @@index([name])
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  resource    String
+  action      String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  role_permissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([resource])
+  @@index([action])
+  @@map("permissions")
+}
+
+model RolePermission {
+  role_id       String
+  permission_id String
+
+  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@index([role_id])
+  @@index([permission_id])
+  @@map("role_permissions")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  user_id      String
+  token_hash   String   @unique
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
+  @@index([token_hash])
+  @@index([expires_at])
+  @@map("sessions")
+}
+
+// ============================================
+// Investigation Core
+// ============================================
+
+model Case {
+  id          String      @id @default(cuid())
+  organization_id String
+  case_number String
+  name        String
+  description String?
+  status      CaseStatus @default(OPEN)
+  severity    CaseSeverity @default(MEDIUM)
+  priority    CasePriority @default(MEDIUM)
+  tags        String[] @default([])
+  assigned_to String?
+  created_by  String
+  created_at  DateTime    @default(now())
+  updated_at  DateTime    @updatedAt
+  closed_at   DateTime?
+  deleted_at  DateTime?
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  creator     User        @relation("CaseCreator", fields: [created_by], references: [id])
+  assignee    User?       @relation("CaseAssignee", fields: [assigned_to], references: [id])
+  investigations Investigation[]
+  entities    Entity[]
+  evidence    Evidence[]
+  relationships Relationship[]
+  timeline_events TimelineEvent[]
+  audit_logs  AuditLog[]
+  intelligence_jobs IntelligenceJob[]
+  risk_indicators RiskIndicator[]
+
+  @@unique([organization_id, case_number])
+  @@index([organization_id])
+  @@index([case_number])
+  @@index([status])
+  @@index([severity])
+  @@index([priority])
+  @@index([assigned_to])
+  @@index([created_by])
+  @@index([deleted_at])
+  @@map("cases")
+}
+
+model Investigation {
+  id          String              @id @default(cuid())
+  case_id     String
+  name        String
+  description String?
+  status      InvestigationStatus @default(ACTIVE)
+  severity    CaseSeverity @default(MEDIUM)
+  priority    CasePriority @default(MEDIUM)
+  assigned_to String?
+  created_by  String
+  created_at  DateTime            @default(now())
+  updated_at  DateTime            @updatedAt
+  closed_at   DateTime?
+  deleted_at  DateTime?
+
+  case        Case     @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  creator     User     @relation("InvestigationCreator", fields: [created_by], references: [id])
+  assignee    User?    @relation("InvestigationAssignee", fields: [assigned_to], references: [id])
+
+  @@index([case_id])
+  @@index([status])
+  @@index([assigned_to])
+  @@index([created_by])
+  @@index([deleted_at])
+  @@map("investigations")
+}
+
+// ============================================
+// Audit
+// ============================================
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  organization_id String
+  user_id      String?
+  action       String
+  entity_type  String
+  entity_id    String?
+  changes      Json?
+  ip_address   String?
+  user_agent   String?
+  created_at   DateTime @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  case        Case?      @relation(fields: [case_id], references: [id], onDelete: SetNull)
+  case_id     String?
+
+  @@index([organization_id])
+  @@index([user_id])
+  @@index([case_id])
+  @@index([entity_type, entity_id])
+  @@index([created_at])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// ============================================
+// Investigation Entities (Phase 2.2)
+// Extensible unified entity model - each entity is tenant-scoped via case
+// ============================================
+
+model Entity {
+  id          String     @id @default(cuid())
+  case_id     String
+  type        EntityType
+  value       String
+  display_name String?
+  metadata    Json?
+  created_by  String
+  created_at  DateTime   @default(now())
+  updated_at  DateTime   @updatedAt
+  deleted_at  DateTime?
+
+  case        Case       @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  creator     User       @relation("EntityCreator", fields: [created_by], references: [id])
+  source_relationships Relationship[] @relation("SourceEntity")
+  target_relationships Relationship[] @relation("TargetEntity")
+  evidence_links EntityEvidence[]
+  timeline_events TimelineEvent[]
+
+  @@index([case_id])
+  @@index([type])
+  @@index([value])
+  @@index([created_by])
+  @@index([deleted_at])
+  @@map("entities")
+}
+
+model EntityEvidence {
+  id          String   @id @default(cuid())
+  entity_id   String
+  evidence_id String
+  created_at  DateTime @default(now())
+
+  entity      Entity   @relation(fields: [entity_id], references: [id], onDelete: Cascade)
+  evidence    Evidence @relation(fields: [evidence_id], references: [id], onDelete: Cascade)
+
+  @@unique([entity_id, evidence_id])
+  @@index([entity_id])
+  @@index([evidence_id])
+  @@map("entity_evidence")
+}
+
+// ============================================
+// Relationships (Phase 2.3) - evidence-backed
+// ============================================
+
+model Relationship {
+  id              String           @id @default(cuid())
+  case_id         String
+  source_entity_id String
+  target_entity_id String
+  type            RelationshipType
+  confidence      Int              @default(50)
+  status          RelationshipStatus @default(ACTIVE)
+  first_seen      DateTime         @default(now())
+  last_seen       DateTime         @default(now())
+  evidence_id     String?
+  source_url      String?
+  explanation     String?          @db.Text
+  created_by      String
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+  deleted_at      DateTime?
+
+  case            Case             @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  source_entity   Entity           @relation("SourceEntity", fields: [source_entity_id], references: [id], onDelete: Cascade)
+  target_entity   Entity           @relation("TargetEntity", fields: [target_entity_id], references: [id], onDelete: Cascade)
+  evidence        Evidence?        @relation(fields: [evidence_id], references: [id], onDelete: SetNull)
+  creator         User             @relation("RelationshipCreator", fields: [created_by], references: [id])
+
+  @@index([case_id])
+  @@index([source_entity_id])
+  @@index([target_entity_id])
+  @@index([type])
+  @@index([confidence])
+  @@index([status])
+  @@index([created_by])
+  @@index([deleted_at])
+  @@map("relationships")
+}
+
+// ============================================
+// Evidence (Phase 2.4) - foundation for conclusions
+// ============================================
+
+model Evidence {
+  id                String             @id @default(cuid())
+  case_id           String
+  source_url        String?
+  source_type       String?
+  source_title      String?
+  observed_at       DateTime?
+  retrieved_at      DateTime           @default(now())
+  content           String?            @db.Text
+  excerpt           String?            @db.Text
+  artifact_url      String?
+  sha256            String?
+  mime_type         String?
+  collection_method String?
+  collector_id      String
+  confidence        Int                @default(50)
+  verification_status EvidenceVerificationStatus @default(OBSERVED)
+  provenance        Json?
+  created_at        DateTime           @default(now())
+  updated_at        DateTime           @updatedAt
+  deleted_at        DateTime?
+
+  case              Case               @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  collector         User               @relation("EvidenceCollector", fields: [collector_id], references: [id])
+  entity_links      EntityEvidence[]
+  relationships     Relationship[]
+  timeline_events   TimelineEvent[]
+
+  @@index([case_id])
+  @@index([sha256])
+  @@index([source_type])
+  @@index([verification_status])
+  @@index([collector_id])
+  @@index([deleted_at])
+  @@map("evidence")
+}
+
+// ============================================
+// Timeline (Phase 2.5) - tenant-scoped, auditable
+// ============================================
+
+model TimelineEvent {
+  id          String            @id @default(cuid())
+  case_id     String
+  entity_id   String?
+  evidence_id String?
+  event_type  TimelineEventType
+  title       String
+  description String?           @db.Text
+  occurred_at DateTime          @default(now())
+  created_by  String
+  created_at  DateTime          @default(now())
+  updated_at  DateTime          @updatedAt
+
+  case        Case              @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  entity      Entity?           @relation(fields: [entity_id], references: [id], onDelete: SetNull)
+  evidence    Evidence?         @relation(fields: [evidence_id], references: [id], onDelete: SetNull)
+  creator     User              @relation("TimelineCreator", fields: [created_by], references: [id])
+
+  @@index([case_id])
+  @@index([entity_id])
+  @@index([evidence_id])
+  @@index([event_type])
+  @@index([occurred_at])
+  @@index([created_by])
+  @@map("timeline_events")
+}
+
+// ============================================
+// Enums
+// ============================================
+
+enum CaseStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  ARCHIVED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum CaseSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum InvestigationStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum EntityType {
+  PERSON
+  ORGANIZATION
+  USERNAME
+  EMAIL
+  PHONE
+  DOMAIN
+  URL
+  IP_ADDRESS
+  WEBSITE
+  SOCIAL_PROFILE
+  CRYPTO_ADDRESS
+  PAYMENT_IDENTIFIER
+}
+
+enum RelationshipType {
+  USES
+  OWNS
+  MENTIONS
+  LINKS_TO
+  HOSTED_ON
+  RESOLVES_TO
+  SHARES
+  REUSES
+  REFERENCES
+  ASSOCIATED_WITH
+  POSSIBLY_ASSOCIATED_WITH
+}
+
+enum RelationshipStatus {
+  ACTIVE
+  INACTIVE
+  DISPUTED
+  CONFIRMED
+}
+
+enum EvidenceVerificationStatus {
+  OBSERVED
+  VERIFIED
+  CORROBORATED
+  INFERENCE
+  HYPOTHESIS
+  UNKNOWN
+}
+
+enum TimelineEventType {
+  CASE_CREATED
+  CASE_UPDATED
+  CASE_STATUS_CHANGED
+  INVESTIGATION_CREATED
+  INVESTIGATION_UPDATED
+  ENTITY_ADDED
+  ENTITY_UPDATED
+  EVIDENCE_COLLECTED
+  EVIDENCE_VERIFIED
+  EVIDENCE_ASSOCIATED
+  EVIDENCE_DISSOCIATED
+  RELATIONSHIP_CREATED
+  RELATIONSHIP_UPDATED
+  ANALYST_NOTE
+  ASSIGNMENT_CHANGED
+  RISK_ASSESSMENT
+  REPORT_GENERATED
+  STATUS_CHANGED
+  INTELLIGENCE_REQUESTED
+  DNS_COLLECTED
+  RDAP_COLLECTED
+  TLS_COLLECTED
+  URL_ANALYZED
+  WEBSITE_ANALYZED
+  INDICATOR_CREATED
+}
+
+// ============================================
+// Intelligence Jobs (Phase 3) - async intelligence collection
+// ============================================
+
+model IntelligenceJob {
+  id              String              @id @default(cuid())
+  case_id         String
+  organization_id String
+  user_id         String
+  type            String              // DNS, RDAP, TLS, URL, WEBSITE
+  input           Json
+  status          String              @default("QUEUED") // QUEUED, RUNNING, COMPLETED, FAILED
+  result          Json?
+  error           String?             @db.Text
+  started_at      DateTime?
+  completed_at    DateTime?
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+
+  case            Case               @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  organization     Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  creator         User               @relation("IntelligenceJobCreator", fields: [user_id], references: [id])
+
+  @@index([case_id])
+  @@index([organization_id])
+  @@index([user_id])
+  @@index([status])
+  @@index([type])
+  @@index([created_at])
+  @@map("intelligence_jobs")
+}
+
+// ============================================
+// Risk Indicators (Phase 3) - deterministic risk analysis
+// ============================================
+
+model RiskIndicator {
+  id              String              @id @default(cuid())
+  case_id         String
+  organization_id String
+  indicator_type  String
+  explanation     String              @db.Text
+  confidence      Int                 @default(50)
+  evidence_ids     String[]            @default([])
+  calculation     Json?
+  created_by      String
+  created_at      DateTime            @default(now())
+  updated_at      DateTime            @updatedAt
+
+  case            Case               @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  organization     Organization       @relation(fields: [organization_id], references: [id], onDelete: Cascade)
+  creator         User               @relation("RiskIndicatorCreator", fields: [created_by], references: [id])
+
+  @@index([case_id])
+  @@index([organization_id])
+  @@index([indicator_type])
+  @@index([confidence])
+  @@index([created_by])
+  @@map("risk_indicators")
+}

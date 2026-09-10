@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+    "removeComments": true,
+    "noEmit": true,
+    "importHelpers": true,
+    "isolatedModules": true,
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "forceConsistentCasingInFileNames": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "incremental": true,
+    "types": ["node"],
+    "paths": {
+      "@monara-sentinel/domain": ["./packages/domain/src"],
+      "@monara-sentinel/database": ["./packages/database/src"],
+      "@monara-sentinel/config": ["./packages/config/src"],
+      "@monara-sentinel/security": ["./packages/security/src"],
+      "@monara-sentinel/ssrf": ["./packages/ssrf/src"],
+      "@monara-sentinel/intelligence": ["./packages/intelligence/src"]
+    }
+  },
+  "exclude": ["node_modules", "dist", ".next", "coverage"]
+}

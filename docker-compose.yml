@@ -1,0 +1,110 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: monara-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: monara_sentinel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: monara-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: monara-api
+    restart: unless-stopped
+    ports:
+      - "3002:3002"
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/monara_sentinel?schema=public
+      DIRECT_URL: postgresql://postgres:postgres@postgres:5432/monara_sentinel?schema=public
+      REDIS_URL: redis://redis:6379
+      # Secrets must be set in .env.local for local dev; fallbacks are dev-only placeholders and never used in production
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-for-development-only-change-in-production-32c}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-b005aff07348ce7d831ab50cb5d04e141516046f305c4567889fe49d024a4e4f}
+      API_URL: http://localhost:3002
+      WEB_URL: http://localhost:3000
+      ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3002,http://127.0.0.1:*
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: sh -c "npx prisma migrate deploy --schema=packages/database/prisma/schema.prisma && node apps/api/dist/index.js"
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    container_name: monara-worker
+    restart: unless-stopped
+    env_file:
+      - .env.local
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/monara_sentinel?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-for-development-only-change-in-production-32c}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-b005aff07348ce7d831ab50cb5d04e141516046f305c4567889fe49d024a4e4f}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: monara-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3002
+    depends_on:
+      - api
+
+  public-check:
+    build:
+      context: .
+      dockerfile: apps/public-check/Dockerfile
+    container_name: monara-public-check
+    restart: "no"
+    environment:
+      NODE_ENV: development
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
