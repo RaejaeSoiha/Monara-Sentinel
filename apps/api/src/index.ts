@@ -7,6 +7,7 @@ import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
+import multipart from '@fastify/multipart';
 import { randomUUID } from 'crypto';
 import {
   validatorCompiler,
@@ -29,6 +30,8 @@ import { relationshipsRoutes } from './modules/relationships/relationships.route
 import { evidenceRoutes } from './modules/evidence/evidence.routes';
 import { timelineRoutes } from './modules/timeline/timeline.routes';
 import { intelligenceRoutes } from './modules/intelligence/intelligence.routes';
+import { imagesRoutes } from './modules/images/images.routes';
+import { usersRoutes } from './modules/users/users.routes';
 
 // Create Fastify instance with Zod type provider
 // Fastify 5 uses loggerInstance for passing a pino instance
@@ -44,6 +47,14 @@ fastify.setSerializerCompiler(serializerCompiler);
 
 // Register plugins
 export async function registerPlugins() {
+  // Multipart support for image uploads
+  await fastify.register(multipart, {
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB
+      files: 1,
+    },
+  });
+
   // Correlation / Request ID
   await fastify.register(correlationPlugin);
 
@@ -176,6 +187,8 @@ export async function registerRoutes() {
   await fastify.register(evidenceRoutes, { prefix: '/api/v1' });
   await fastify.register(timelineRoutes, { prefix: '/api/v1' });
   await fastify.register(intelligenceRoutes, { prefix: '/api/v1' });
+  await fastify.register(imagesRoutes, { prefix: '/api/v1/cases' });
+  await fastify.register(usersRoutes, { prefix: '/api/v1' });
 
   // Alias for existing clients (will be deprecated after Stage 4)
   await fastify.register(healthRoutes, { prefix: '/api' });
@@ -188,6 +201,8 @@ export async function registerRoutes() {
   await fastify.register(evidenceRoutes, { prefix: '/api' });
   await fastify.register(timelineRoutes, { prefix: '/api' });
   await fastify.register(intelligenceRoutes, { prefix: '/api' });
+  await fastify.register(imagesRoutes, { prefix: '/api/cases' });
+  await fastify.register(usersRoutes, { prefix: '/api' });
 
   // Version discovery endpoint
   fastify.get('/api', async () => ({

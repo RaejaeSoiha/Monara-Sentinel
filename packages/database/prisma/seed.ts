@@ -158,6 +158,51 @@ async function main() {
 
   console.log('Assigned permissions to roles');
 
+  // Create superadmin user (admin/1212)
+  const superadminPasswordHash = await hashPassword('1212');
+  const superadminUser = await prisma.user.upsert({
+    where: { email: 'admin' },
+    update: {},
+    create: {
+      email: 'admin',
+      password_hash: superadminPasswordHash,
+      name: 'Platform Owner',
+    },
+  });
+
+  console.log('Created superadmin user (admin/1212)');
+
+  // Create platform owner organization
+  const platformOwnerOrg = await prisma.organization.upsert({
+    where: { slug: 'platform-owner' },
+    update: {},
+    create: {
+      name: 'Platform Owner Team',
+      slug: 'platform-owner',
+      description: 'Platform owner organization',
+    },
+  });
+
+  console.log('Created platform owner organization');
+
+  // Create superadmin membership
+  await prisma.membership.upsert({
+    where: {
+      user_id_organization_id: {
+        user_id: superadminUser.id,
+        organization_id: platformOwnerOrg.id,
+      },
+    },
+    update: {},
+    create: {
+      user_id: superadminUser.id,
+      organization_id: platformOwnerOrg.id,
+      role_id: ownerRole.id,
+    },
+  });
+
+  console.log('Created superadmin membership');
+
   // Create test user
   const passwordHash = await hashPassword('TestPassword123!');
   const testUser = await prisma.user.upsert({
@@ -197,11 +242,11 @@ async function main() {
     create: {
       user_id: testUser.id,
       organization_id: testOrganization.id,
-      role_id: ownerRole.id,
+      role_id: investigatorRole.id,
     },
   });
 
-  console.log('Created membership');
+  console.log('Created test membership');
 
   console.log('Database seed completed successfully');
 }

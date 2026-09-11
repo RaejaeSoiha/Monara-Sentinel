@@ -4,6 +4,7 @@ import { logger } from './lib/logger';
 import { createQueue, createWorker, getRedisConnection, closeRedisConnection } from './lib/queues';
 import { processExampleJob, EXAMPLE_QUEUE, ExampleJobData } from './jobs/example.job';
 import { processIntelligenceJob, INTELLIGENCE_QUEUE, IntelligenceJobData } from './jobs/intelligence.job';
+import { processImageProcessingJob, IMAGE_PROCESSING_QUEUE } from './jobs/image-processing.job';
 
 const workers: Array<{ close: () => Promise<void> }> = [];
 const queues: Array<{ close: () => Promise<void> }> = [];
@@ -11,7 +12,7 @@ const queues: Array<{ close: () => Promise<void> }> = [];
 async function bootstrap() {
   logger.info(
     {
-      queues: [EXAMPLE_QUEUE, INTELLIGENCE_QUEUE],
+      queues: [EXAMPLE_QUEUE, INTELLIGENCE_QUEUE, IMAGE_PROCESSING_QUEUE],
       redisUrl: config.redis.url.replace(/:[^:@]+@/, ':***@'),
     },
     'Monara Sentinel Worker starting'
@@ -43,6 +44,15 @@ async function bootstrap() {
     return processIntelligenceJob(job);
   });
   workers.push(intelligenceWorker);
+
+  // Image processing queue + worker (Phase 3B)
+  const imageProcessingQueue = createQueue(IMAGE_PROCESSING_QUEUE);
+  queues.push(imageProcessingQueue);
+
+  const imageProcessingWorker = createWorker(IMAGE_PROCESSING_QUEUE, async (job) => {
+    return processImageProcessingJob(job);
+  });
+  workers.push(imageProcessingWorker);
 
   // Add a test job on startup to verify pipeline (only in development)
   if (config.app.isDevelopment) {

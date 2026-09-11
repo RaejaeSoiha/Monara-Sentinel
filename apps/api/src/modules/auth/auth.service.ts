@@ -12,6 +12,7 @@ import {
 } from '@monara-sentinel/security';
 import { createAuditLog, AuditActions } from '../../lib/audit';
 import type { RegisterInput, LoginInput } from './auth.schema';
+import { randomBytes } from 'crypto';
 
 function slugify(text: string): string {
   return text
@@ -346,6 +347,192 @@ export class AuthService {
         },
       })),
     };
+  }
+
+  async listAllUsers() {
+    const users = await prisma.user.findMany({
+      where: { deleted_at: null },
+      include: {
+        memberships: {
+          include: {
+            organization: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    return users.map((user) => ({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      created_at: user.created_at,
+      memberships: user.memberships.map((m) => ({
+        organization: {
+          id: m.organization.id,
+          name: m.organization.name,
+          slug: m.organization.slug,
+        },
+        role: m.role.name,
+      })),
+    }));
+  }
+
+  async listAllOrganizations() {
+    const organizations = await prisma.organization.findMany({
+      where: { deleted_at: null },
+      include: {
+        memberships: {
+          include: {
+            user: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    return organizations.map((org) => ({
+      id: org.id,
+      name: org.name,
+      slug: org.slug,
+      description: org.description,
+      created_at: org.created_at,
+      memberCount: org.memberships.length,
+      members: org.memberships.map((m) => ({
+        user: {
+          id: m.user.id,
+          email: m.user.email,
+          name: m.user.name,
+        },
+        role: m.role.name,
+      })),
+    }));
+  }
+
+  async switchOrganization(userId: string, targetOrganizationId: string, ipAddress?: string, userAgent?: string) {
+    // Verify user has membership in target organization
+    const membership = await prisma.membership.findFirst({
+      where: {
+        user_id: userId,
+        organization_id: targetOrganizationId,
+      },
+      include: {
+        organization: true,
+        role: true,
+        user: true,
+      },
+    });
+
+    if (!membership) {
+      throw new SecurityError('Not a member of this organization', 'NO_MEMBERSHIP');
+    }
+
+    // Generate new tokens for the target organization
+    const payload = {
+      userId,
+      organizationId: targetOrganizationId,
+      email: membership.user.email,
+    };
+
+    const tokens = generateTokenPair(
+      payload,
+      config.jwt.secret,
+      config.jwt.expiresIn,
+      config.jwt.refreshExpiresIn
+    );
+
+    // Store new refresh session
+    const refreshHash = hashToken(tokens.refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.session.create({
+      data: {
+        user_id: userId,
+        token_hash: refreshHash,
+        expires_at: expiresAt,
+      },
+    });
+
+    await createAuditLog({
+      organizationId: targetOrganizationId,
+      userId,
+      action: AuditActions.USER_LOGIN, // Using login action for org switch
+      entityType: 'organization',
+      entityId: targetOrganizationId,
+      ipAddress: ipAddress || null,
+      userAgent: userAgent || null,
+    });
+
+    return {
+      user: {
+        id: membership.user.id,
+        email: membership.user.email,
+        name: membership.user.name,
+      },
+      organization: {
+        id: membership.organization.id,
+        name: membership.organization.name,
+        slug: membership.organization.slug,
+      },
+      tokens,
+    };
+  }
+
+  async requestPasswordReset(email: string) {
+    const user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user || user.deleted_at) {
+      // Don't reveal if user exists
+      return;
+    }
+
+    // Generate reset token
+    const resetToken = randomBytes(32).toString('hex');
+    const resetTokenExpires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        reset_token: resetToken,
+        reset_token_expires: resetTokenExpires,
+      },
+    });
+
+    // In production, send email with reset link
+    // For demo, log the token
+    console.log(`Password reset token for ${email}: ${resetToken}`);
+    console.log(`Reset link: http://localhost:3000/reset-password?token=${resetToken}`);
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const user = await prisma.user.findFirst({
+      where: {
+        reset_token: token,
+        reset_token_expires: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new SecurityError('Invalid or expired reset token', 'INVALID_TOKEN');
+    }
+
+    const passwordHash = await hashPassword(newPassword);
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password_hash: passwordHash,
+        reset_token: null,
+        reset_token_expires: null,
+      },
+    });
+
+    // Invalidate all existing sessions
+    await prisma.session.deleteMany({
+      where: { user_id: user.id },
+    });
   }
 }
 

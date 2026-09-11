@@ -3,18 +3,14 @@
 
 import { z } from 'zod';
 
-// Password: min 12 chars, require complexity per SECURITY_PLAN.md:55
+// Password: min 4 chars for demo (reduced from 12 for development)
 export const passwordSchema = z
   .string()
-  .min(12, 'Password must be at least 12 characters')
-  .max(128, 'Password must be at most 128 characters')
-  .regex(/[A-Z]/, 'Password must contain uppercase letter')
-  .regex(/[a-z]/, 'Password must contain lowercase letter')
-  .regex(/[0-9]/, 'Password must contain number')
-  .regex(/[^A-Za-z0-9]/, 'Password must contain special character');
+  .min(4, 'Password must be at least 4 characters')
+  .max(128, 'Password must be at most 128 characters');
 
 export const registerSchema = z.object({
-  email: z.string().email('Invalid email').max(255),
+  email: z.string().min(1).max(255), // Accept email or username
   password: passwordSchema,
   name: z.string().min(1).max(100).optional(),
   organizationName: z.string().min(1).max(100).optional(),
@@ -27,12 +23,21 @@ export const registerSchema = z.object({
 });
 
 export const loginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().min(1).max(255), // Accept email or username
   password: z.string().min(1),
 });
 
 export const refreshSchema = z.object({
   refreshToken: z.string().min(1),
+});
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().min(1).max(255),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: passwordSchema,
 });
 
 export const meResponseSchema = z.object({

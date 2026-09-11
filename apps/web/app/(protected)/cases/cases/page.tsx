@@ -17,30 +17,30 @@ interface CaseItem {
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case 'OPEN': return <span className="status-badge status-badge-info">OPEN</span>;
-    case 'IN_PROGRESS': return <span className="status-badge status-badge-warning">IN PROGRESS</span>;
-    case 'CLOSED': return <span className="status-badge status-badge-success">CLOSED</span>;
-    case 'ARCHIVED': return <span className="status-badge" style={{ background: 'var(--color-bg-card-elevated)', color: 'var(--color-text-tertiary)' }}>ARCHIVED</span>;
-    default: return <span className="status-badge">{status}</span>;
+    case 'OPEN': return <span className="status-badge status-badge-success">OPEN</span>;
+    case 'IN_PROGRESS': return <span className="status-badge status-badge-running">RUNNING</span>;
+    case 'CLOSED': return <span className="status-badge status-badge-pending">CLOSED</span>;
+    case 'ARCHIVED': return <span className="status-badge status-badge-unknown">ARCHIVED</span>;
+    default: return <span className="status-badge status-badge-unknown">{status}</span>;
   }
 };
 
 const getSeverityBadge = (severity: string) => {
   switch (severity) {
-    case 'LOW': return <span className="status-badge risk-badge-low">LOW</span>;
-    case 'MEDIUM': return <span className="status-badge risk-badge-moderate">MEDIUM</span>;
-    case 'HIGH': return <span className="status-badge risk-badge-high">HIGH</span>;
-    case 'CRITICAL': return <span className="status-badge risk-badge-critical">CRITICAL</span>;
-    default: return <span className="status-badge">{severity}</span>;
+    case 'LOW': return <span className="status-badge" style={{ background: 'var(--color-severity-low)', color: 'var(--color-severity-low)', border: '1px solid var(--color-severity-low)' }}>LOW</span>;
+    case 'MEDIUM': return <span className="status-badge" style={{ background: 'var(--color-severity-moderate)', color: 'var(--color-severity-moderate)', border: '1px solid var(--color-severity-moderate)' }}>MODERATE</span>;
+    case 'HIGH': return <span className="status-badge" style={{ background: 'var(--color-severity-high)', color: 'var(--color-severity-high)', border: '1px solid var(--color-severity-high)' }}>HIGH</span>;
+    case 'CRITICAL': return <span className="status-badge" style={{ background: 'var(--color-severity-critical)', color: 'var(--color-severity-critical)', border: '1px solid var(--color-severity-critical)' }}>CRITICAL</span>;
+    default: return <span className="status-badge status-badge-unknown">{severity}</span>;
   }
 };
 
 const getPriorityBadge = (priority: string) => {
   switch (priority) {
-    case 'LOW': return <span className="status-badge" style={{ background: 'var(--color-success-subtle)', color: 'var(--color-success)' }}>LOW</span>;
-    case 'MEDIUM': return <span className="status-badge" style={{ background: 'var(--color-warning-subtle)', color: 'var(--color-warning)' }}>MEDIUM</span>;
-    case 'HIGH': return <span className="status-badge" style={{ background: 'var(--color-error-subtle)', color: 'var(--color-error)' }}>HIGH</span>;
-    default: return <span className="status-badge">{priority}</span>;
+    case 'LOW': return <span className="status-badge status-badge-success">LOW</span>;
+    case 'MEDIUM': return <span className="status-badge status-badge-warning">MEDIUM</span>;
+    case 'HIGH': return <span className="status-badge status-badge-failed">HIGH</span>;
+    default: return <span className="status-badge status-badge-unknown">{priority}</span>;
   }
 };
 
@@ -119,11 +119,11 @@ export default function CasesPage() {
     <div>
       {/* Header */}
       <div style={{ marginBottom: 32 }}>
-        <h1 style={{ fontSize: 32, fontWeight: 700, marginBottom: 8, color: 'var(--color-text-primary)' }}>
+        <h1 style={{ fontSize: 28, fontWeight: 700, marginBottom: 8, color: 'var(--color-text-primary)', letterSpacing: '-0.5px' }}>
           Cases
         </h1>
-        <p style={{ color: 'var(--color-text-secondary)', fontSize: 14, margin: 0 }}>
-          Tenant-scoped case management with evidence-backed investigation
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: 13, margin: 0, letterSpacing: '0.5px' }}>
+          INVESTIGATION CASE MANAGEMENT
         </p>
       </div>
 
@@ -139,9 +139,9 @@ export default function CasesPage() {
           <div className="metric-value">{loading ? '—' : openCases}</div>
           <div className="metric-subtitle">Active investigations</div>
         </div>
-        <div className="metric-card" style={{ borderLeft: '3px solid var(--color-risk-critical)' }}>
-          <div className="metric-label" style={{ color: 'var(--color-risk-critical)' }}>HIGH RISK</div>
-          <div className="metric-value" style={{ color: 'var(--color-risk-critical)' }}>
+        <div className="metric-card" style={{ borderLeft: '2px solid var(--color-critical)' }}>
+          <div className="metric-label" style={{ color: 'var(--color-critical)' }}>HIGH RISK</div>
+          <div className="metric-value" style={{ color: 'var(--color-critical)' }}>
             {loading ? '—' : highRiskCases}
           </div>
           <div className="metric-subtitle">Require attention</div>
@@ -200,19 +200,19 @@ export default function CasesPage() {
 
       {/* Create Case Form */}
       <div className="monara-card monara-card-elevated" style={{ marginBottom: 24 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: 'var(--color-text-primary)' }}>
-          Create New Case
+        <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 16, color: 'var(--color-text-primary)', letterSpacing: '0.5px' }}>
+          CREATE NEW CASE
         </h3>
         <form onSubmit={handleCreate}>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <div style={{ flex: '1 1 200px', minWidth: 200 }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: 8, 
-                fontWeight: 500, 
-                fontSize: 12,
+              <label style={{
+                display: 'block',
+                marginBottom: 8,
+                fontWeight: 500,
+                fontSize: 11,
                 color: 'var(--color-text-secondary)',
-                letterSpacing: '0.5px'
+                letterSpacing: '1px'
               }}>
                 CASE TITLE
               </label>
@@ -225,13 +225,13 @@ export default function CasesPage() {
               />
             </div>
             <div style={{ flex: '2 1 300px', minWidth: 250 }}>
-              <label style={{ 
-                display: 'block', 
-                marginBottom: 8, 
-                fontWeight: 500, 
-                fontSize: 12,
+              <label style={{
+                display: 'block',
+                marginBottom: 8,
+                fontWeight: 500,
+                fontSize: 11,
                 color: 'var(--color-text-secondary)',
-                letterSpacing: '0.5px'
+                letterSpacing: '1px'
               }}>
                 DESCRIPTION (OPTIONAL)
               </label>
@@ -242,11 +242,11 @@ export default function CasesPage() {
                 className="monara-input"
               />
             </div>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               className="monara-button monara-button-primary"
             >
-              <span>📁</span>
+              <span>➕</span>
               Create Case
             </button>
           </div>
@@ -297,70 +297,68 @@ export default function CasesPage() {
           )}
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: 12 }}>
+        <div style={{ display: 'grid', gap: 8 }}>
           {filteredCases.map((c) => (
             <Link key={c.id} href={`/cases/${c.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <div className="monara-card" style={{ 
-                padding: 20,
+              <div className="monara-card" style={{
+                padding: 16,
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                transition: 'all var(--transition-normal)'
+                transition: 'all var(--transition-normal)',
+                borderLeft: c.severity === 'CRITICAL' ? '2px solid var(--color-critical)' :
+                            c.severity === 'HIGH' ? '2px solid var(--color-warning)' :
+                            c.severity === 'MEDIUM' ? '2px solid var(--color-warning)' :
+                            '2px solid var(--color-accent-primary)'
               }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
-                    <span style={{ 
-                      fontWeight: 700, 
-                      fontSize: 15, 
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
+                    <span style={{
+                      fontWeight: 700,
+                      fontSize: 13,
                       color: 'var(--color-text-primary)',
                       fontFamily: 'var(--font-mono)',
                       letterSpacing: '0.5px'
                     }}>
                       {c.case_number}
                     </span>
-                    <span style={{ 
-                      fontWeight: 600, 
-                      fontSize: 15, 
-                      color: 'var(--color-text-primary)' 
-                    }}>
-                      —
-                    </span>
-                    <span style={{ 
-                      fontWeight: 600, 
-                      fontSize: 15, 
-                      color: 'var(--color-text-primary)' 
+                    <span style={{
+                      fontWeight: 600,
+                      fontSize: 14,
+                      color: 'var(--color-text-primary)'
                     }}>
                       {c.name}
                     </span>
                   </div>
-                  
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
                     {getStatusBadge(c.status)}
                     {getSeverityBadge(c.severity)}
                     {getPriorityBadge(c.priority)}
                     {c.tags.length > 0 && (
                       c.tags.map((tag) => (
-                        <span key={tag} style={{ 
-                          padding: '2px 8px', 
-                          borderRadius: 4, 
-                          fontSize: 11, 
-                          fontWeight: 500,
-                          background: 'var(--color-accent-primary-subtle)', 
-                          color: 'var(--color-accent-primary)'
+                        <span key={tag} style={{
+                          padding: '2px 8px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: 10,
+                          fontWeight: 600,
+                          background: 'var(--color-accent-primary-subtle)',
+                          color: 'var(--color-accent-primary)',
+                          letterSpacing: '0.5px'
                         }}>
                           {tag}
                         </span>
                       ))
                     )}
-                    <span style={{ fontSize: 12, color: 'var(--color-text-tertiary)' }}>
-                      • {new Date(c.created_at).toLocaleDateString()}
+                    <span style={{ fontSize: 11, color: 'var(--color-text-tertiary)', fontFamily: 'var(--font-mono)' }}>
+                      {new Date(c.created_at).toLocaleDateString()}
                     </span>
                   </div>
-                  
+
                   {c.description && (
-                    <div style={{ 
-                      fontSize: 13, 
-                      color: 'var(--color-text-secondary)', 
+                    <div style={{
+                      fontSize: 12,
+                      color: 'var(--color-text-secondary)',
                       lineHeight: 1.4,
                       maxWidth: 600
                     }}>
@@ -368,18 +366,19 @@ export default function CasesPage() {
                     </div>
                   )}
                 </div>
-                
-                <div style={{ 
-                  padding: '8px 16px', 
-                  background: 'var(--color-bg-card-elevated)', 
-                  borderRadius: 'var(--radius-md)', 
-                  fontSize: 12, 
-                  color: 'var(--color-accent-primary)', 
-                  fontWeight: 500,
+
+                <div style={{
+                  padding: '6px 12px',
+                  background: 'var(--color-bg-card-elevated)',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 11,
+                  color: 'var(--color-accent-primary)',
+                  fontWeight: 600,
                   marginLeft: 16,
-                  border: '1px solid var(--color-border-default)'
+                  border: '1px solid var(--color-border-default)',
+                  letterSpacing: '0.5px'
                 }}>
-                  View →
+                  VIEW →
                 </div>
               </div>
             </Link>

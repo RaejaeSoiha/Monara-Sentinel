@@ -5,11 +5,23 @@ import {
   getOrganizationHandler,
   listOrganizationsHandler,
   protectedCasesHandler,
+  createOrganizationHandler,
+  updateOrganizationHandler,
+  deleteOrganizationHandler,
 } from './organization.controller';
 
 export async function organizationRoutes(fastify: FastifyInstance) {
   // List orgs - authenticated
   fastify.get('/organizations', { preHandler: [authenticate] }, listOrganizationsHandler);
+
+  // Create organization
+  fastify.post('/organizations', { preHandler: [authenticate] }, createOrganizationHandler);
+
+  // Update organization
+  fastify.patch('/organizations/:id', { preHandler: [authenticate] }, updateOrganizationHandler);
+
+  // Delete organization
+  fastify.delete('/organizations/:id', { preHandler: [authenticate] }, deleteOrganizationHandler);
 
   // Get org by id - tests tenant isolation (user must be member)
   fastify.get('/organizations/:id', { preHandler: [authenticate] }, getOrganizationHandler);

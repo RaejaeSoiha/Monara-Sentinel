@@ -5,8 +5,7 @@
     "noEmit": false,
     "declaration": true,
     "declarationMap": true,
-    "strictNullChecks": false,
-    "ignoreDeprecations": "6.0"
+    "strictNullChecks": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

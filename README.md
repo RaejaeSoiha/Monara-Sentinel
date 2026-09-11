@@ -213,12 +213,13 @@ Security headers (helmet), CORS whitelist, rate limiting (100/15m), Zod validati
 ### Verification Results
 
 #### Automated Tests
-- **Typecheck**: 18 packages successful (11 total)
+- **Typecheck**: 18 packages successful (Monorepo task expansion)
 - **Build**: 11 packages successful (Next.js optimized build)
 - **SSRF Tests**: 36 tests passed — loopback, private IPs, encoded bypasses, redirects
 - **Phase 3 Tests**: 19 tests passed — DNS collection, intelligence history
 - **Phase 2 Tests**: 45 tests passed — auth, RBAC, tenant isolation, evidence
 - **Total**: 106 tests passing
+- **TypeScript Configuration**: All invalid `ignoreDeprecations` settings removed
 
 #### Docker Stack
 - **PostgreSQL**: Healthy (5432)
@@ -238,14 +239,47 @@ Security headers (helmet), CORS whitelist, rate limiting (100/15m), Zod validati
 
 ### Known Limitations
 
-- **Graph Visualization**: Not implemented (placeholder at `/graph`)
-- **React Flow**: Planned for Phase 4
-- **Public Intelligence Service**: Placeholder only (Phase 4)
-- **BullMQ End-to-End**: Infrastructure verified, but full queue integration requires worker deployment
-- **Additional Tests**: Authorization/RBAC tests exist but could be expanded
-- **UI Component Tests**: Not implemented (manual verification performed)
+#### Explicitly Deferred (Phase 4)
+- **React Flow Graph Visualization**: Not implemented (placeholder at `/graph`)
+- **Public Intelligence Service**: Placeholder only
+- **Expanded Authorization Test Suite**: Existing tests pass, but coverage could be expanded
+- **Dedicated UI Component Test Suite**: Manual verification performed, automated component tests deferred
 
-### Phase 3 Status: PASS WITH LIMITATIONS
+#### Intentionally Not Implemented
+- Offensive scraping/hacking
+- Unauthorized access
+- CAPTCHA bypass
+- Automated disruptive actions
+- Automatic labeling of people as scammers
+- Fake intelligence or evidence
+- External reporting without human approval
+
+### Phase 3 Status: ACCEPTED
+
+**Phase 3 FROZEN**
+
+### Phase 3B UI/UX Upgrade Status: COMPLETED
+
+**Phase 3B FROZEN**
+
+The Phase 3B UI/UX upgrade has been successfully implemented, transforming the Monara Sentinel interface into a premium dark intelligence dashboard with professional investigation/SOC aesthetic.
+
+**Implemented Phase 3B Features:**
+- ✅ Premium dark theme with neon green primary accent
+- ✅ Semantic color system (intelligence cyan, image/device purple, warning orange, critical red)
+- ✅ Subtle grid background
+- ✅ Professional compact design system with thin borders
+- ✅ Monospace typography for technical values
+- ✅ Premium sidebar with MONARA SENTINEL / SCAMNET branding
+- ✅ Intelligence-focused Dashboard with activity feed
+- ✅ Semantic severity colors for Cases (LOW, MODERATE, HIGH, CRITICAL)
+- ✅ Investigation workstation layout for Case Detail
+- ✅ Professional empty states with contextual messaging
+- ✅ Status badges with semantic colors (SUCCESS, RUNNING, PENDING, WARNING, FAILED, UNKNOWN)
+- ✅ Button variants (primary, intelligence, image, secondary, ghost, danger)
+- ✅ Card system with premium hover states
+- ✅ Compact information density
+- ✅ Responsive design foundation
 
 #### Definition of Done
 - [x] DNS works

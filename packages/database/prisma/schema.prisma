@@ -20,6 +20,8 @@ model User {
   password_hash String
   name          String?
   avatar_url    String?
+  reset_token   String?
+  reset_token_expires DateTime?
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
   deleted_at    DateTime?
@@ -174,6 +176,9 @@ model Case {
   audit_logs  AuditLog[]
   intelligence_jobs IntelligenceJob[]
   risk_indicators RiskIndicator[]
+  image_analyses ImageAnalysis[]
+  location_observations LocationObservation[]
+  device_observations DeviceObservation[]
 
   @@unique([organization_id, case_number])
   @@index([organization_id])
@@ -361,6 +366,7 @@ model Evidence {
   entity_links      EntityEvidence[]
   relationships     Relationship[]
   timeline_events   TimelineEvent[]
+  image_analysis    ImageAnalysis?
 
   @@index([case_id])
   @@index([sha256])
@@ -447,6 +453,9 @@ enum EntityType {
   SOCIAL_PROFILE
   CRYPTO_ADDRESS
   PAYMENT_IDENTIFIER
+  IMAGE
+  DEVICE_CLUE
+  LOCATION
 }
 
 enum RelationshipType {
@@ -461,6 +470,13 @@ enum RelationshipType {
   REFERENCES
   ASSOCIATED_WITH
   POSSIBLY_ASSOCIATED_WITH
+  FOUND_ON
+  MATCHES
+  POSSIBLY_MATCHES
+  DERIVED_FROM
+  CONTAINS
+  HAS_DEVICE_CLUE
+  GEOLOCATED_TO
 }
 
 enum RelationshipStatus {
@@ -505,6 +521,13 @@ enum TimelineEventType {
   URL_ANALYZED
   WEBSITE_ANALYZED
   INDICATOR_CREATED
+  IMAGE_RECEIVED
+  IMAGE_ANALYZED
+  EXIF_EXTRACTED
+  OCR_COMPLETED
+  IMAGE_MATCH_FOUND
+  LOCATION_OBSERVED
+  DEVICE_OBSERVED
 }
 
 // ============================================
@@ -566,4 +589,175 @@ model RiskIndicator {
   @@index([confidence])
   @@index([created_by])
   @@map("risk_indicators")
+}
+
+// ============================================
+// Image Intelligence (Phase 3B)
+// ============================================
+
+model ImageAnalysis {
+  id              String           @id @default(cuid())
+  case_id         String
+  evidence_id     String           @unique
+  status          String           @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
+  sha256          String?
+  sha512          String?
+  phash           String?
+  dhash           String?
+  ahash           String?
+  width           Int?
+  height          Int?
+  mime_type       String?
+  file_size       Int?
+  processing_started_at  DateTime?
+  processing_completed_at DateTime?
+  error           String?          @db.Text
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  case            Case             @relation(fields: [case_id], references: [id], onDelete: Cascade)
+  evidence        Evidence         @relation(fields: [evidence_id], references: [id], onDelete: Cascade)
+  metadata        ImageMetadata?
+  matches         ImageMatch[]
+  origin_observation ImageOriginObservation?
+
+  @@index([case_id])
+  @@index([evidence_id])
+  @@index([status])
+  @@index([sha256])
+  @@index([phash])
+  @@map("image_analyses")
+}
+
+model ImageMetadata {
+  id              String           @id @default(cuid())
+  image_analysis_id String          @unique
+  camera_make     String?
+  camera_model    String?
+  lens            String?
+  software        String?
+  capture_timestamp DateTime?
+  timezone        String?
+  gps_latitude    Float?
+  gps_longitude   Float?
+  gps_altitude    Float?
+  orientation     Int?
+  focal_length    Float?
+  iso             Int?
+  exposure_time   Float?
+  f_number        Float?
+  color_space     String?
+  exif_data       Json?
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  image_analysis  ImageAnalysis    @relation(fields: [image_analysis_id], references: [id], onDelete: Cascade)
+
+  @@index([image_analysis_id])
+  @@map("image_metadata")
+}
+
+model ImageMatch {
+  id              String           @id @default(cuid())
+  image_analysis_id String
+  matched_image_id String?
+  match_type      String           // EXACT_MATCH, NEAR_DUPLICATE, POSSIBLE_MATCH
+  similarity      Float?
+  source_url      String?
+  provider        String?
+  observed_timestamp DateTime?
+  published_timestamp DateTime?
+  confidence      Int              @default(50)
+  evidence_id     String?
+  created_at      DateTime         @default(now())
+
+  image_analysis  ImageAnalysis    @relation(fields: [image_analysis_id], references: [id], onDelete: Cascade)
+
+  @@index([image_analysis_id])
+  @@index([match_type])
+  @@index([similarity])
+  @@map("image_matches")
+}
+
+model ImageOriginObservation {
+  id              String           @id @default(cuid())
+  image_analysis_id String          @unique
+  origin_type     String           // EARLIEST_OBSERVED_OCCURRENCE, POSSIBLE_EARLIER_OCCURRENCE, DERIVED_COPY, REPOST, SOURCE_UNKNOWN
+  earliest_observed_at DateTime?
+  earliest_source_url String?
+  confidence      Int              @default(50)
+  evidence_ids    String[]         @default([])
+  explanation     String?          @db.Text
+  created_at      DateTime         @default(now())
+  updated_at      DateTime         @updatedAt
+
+  image_analysis  ImageAnalysis    @relation(fields: [image_analysis_id], references: [id], onDelete: Cascade)
+
+  @@index([image_analysis_id])
+  @@index([origin_type])
+  @@map("image_origin_observations")
+}
+
+model LocationObservation {
+  id              String           @id @default(cuid())
+  case_id         String
+  evidence_id     String?
+  source          String           // EXIF_GPS, IP_GEOLOCATION, ASN, ISP, HOSTING, PUBLIC_BUSINESS, PUBLIC_PROFILE, PHONE_REGION, WEBSITE_METADATA, TIMEZONE, LANGUAGE
+  location_type   String           // EXACT_METADATA, HIGH, MEDIUM, LOW, UNKNOWN
+  latitude        Float?
+  longitude       Float?
+  country         String?
+  region          String?
+  city            String?
+  postal_code     String?
+  timezone        String?
+  asn             String?
+  isp             String?
+  hosting_provider String?
+  description     String?          @db.Text
+  confidence      Int              @default(50)
+  metadata        Json?
+  created_at      DateTime         @default(now())
+
+  case            Case             @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  @@index([case_id])
+  @@index([evidence_id])
+  @@index([source])
+  @@index([location_type])
+  @@index([confidence])
+  @@map("location_observations")
+}
+
+model DeviceObservation {
+  id              String           @id @default(cuid())
+  case_id         String
+  evidence_id     String?
+  source          String           // EXIF, IMAGE_METADATA, HTTP_TELEMETRY, APPLICATION_TELEMETRY
+  device_type     String           // CAMERA, BROWSER, MOBILE, DESKTOP, TABLET, UNKNOWN
+  make            String?
+  model           String?
+  os              String?
+  os_version      String?
+  browser         String?
+  browser_version String?
+  user_agent      String?
+  screen_width    Int?
+  screen_height   Int?
+  timezone        String?
+  language        String?
+  confidence      Int              @default(50)
+  observation_type String          // OBSERVED_DEVICE_DATA, DEVICE_INFERENCE
+  description     String?          @db.Text
+  metadata        Json?
+  created_at      DateTime         @default(now())
+
+  case            Case             @relation(fields: [case_id], references: [id], onDelete: Cascade)
+
+  @@index([case_id])
+  @@index([evidence_id])
+  @@index([source])
+  @@index([device_type])
+  @@index([confidence])
+  @@map("device_observations")
 }

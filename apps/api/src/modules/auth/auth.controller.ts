@@ -139,3 +139,75 @@ export async function meHandler(request: FastifyRequest, reply: FastifyReply) {
   const profile = await authService.getProfile(user.id);
   return reply.send(profile);
 }
+
+export async function listAllUsersHandler(request: FastifyRequest, reply: FastifyReply) {
+  const user = request.user;
+  if (!user) {
+    return reply.status(401).send({ error: 'Unauthorized', code: 'UNAUTHORIZED' });
+  }
+
+  // Superadmin check - only admin user can access this
+  if (user.email !== 'admin') {
+    return reply.status(403).send({ error: 'Forbidden', code: 'FORBIDDEN' });
+  }
+
+  const users = await authService.listAllUsers();
+  return reply.send(users);
+}
+
+export async function listAllOrganizationsHandler(request: FastifyRequest, reply: FastifyReply) {
+  const user = request.user;
+  if (!user) {
+    return reply.status(401).send({ error: 'Unauthorized', code: 'UNAUTHORIZED' });
+  }
+
+  // Superadmin check
+  if (user.email !== 'admin') {
+    return reply.status(403).send({ error: 'Forbidden', code: 'FORBIDDEN' });
+  }
+
+  const organizations = await authService.listAllOrganizations();
+  return reply.send(organizations);
+}
+
+export async function switchOrganizationHandler(request: FastifyRequest, reply: FastifyReply) {
+  const user = request.user;
+  if (!user) {
+    return reply.status(401).send({ error: 'Unauthorized', code: 'UNAUTHORIZED' });
+  }
+
+  const { organizationId } = request.body as { organizationId: string };
+
+  if (!organizationId) {
+    return reply.status(400).send({ error: 'Organization ID required', code: 'VALIDATION_ERROR' });
+  }
+
+  const result = await authService.switchOrganization(user.id, organizationId, request.ip, getUserAgent(request));
+
+  return reply.send(result);
+}
+
+export async function requestPasswordResetHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { email } = request.body as { email: string };
+
+  if (!email) {
+    return reply.status(400).send({ error: 'Email required', code: 'VALIDATION_ERROR' });
+  }
+
+  await authService.requestPasswordReset(email);
+
+  // Always return success to prevent email enumeration
+  return reply.send({ message: 'If the email exists, a reset link has been sent' });
+}
+
+export async function resetPasswordHandler(request: FastifyRequest, reply: FastifyReply) {
+  const { token, password } = request.body as { token: string; password: string };
+
+  if (!token || !password) {
+    return reply.status(400).send({ error: 'Token and password required', code: 'VALIDATION_ERROR' });
+  }
+
+  await authService.resetPassword(token, password);
+
+  return reply.send({ message: 'Password reset successful' });
+}
